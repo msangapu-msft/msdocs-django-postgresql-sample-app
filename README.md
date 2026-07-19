@@ -20,7 +20,7 @@ description: This is a Python web app using the Django framework and the Azure D
 
 This is a Python web app using the Django framework and the Azure Database for PostgreSQL relational database service. The Django app is hosted in a fully managed Azure App Service. This app is designed to be be run locally and then deployed to Azure. You can either deploy this project by following the tutorial [*Deploy a Python (Django or Flask) web app with PostgreSQL in Azure*](https://docs.microsoft.com/azure/app-service/tutorial-python-postgresql-app) or by using the [Azure Developer CLI (azd)](https://learn.microsoft.com/azure/developer/azure-developer-cli/overview) according to the instructions below.
 
-Additionally, the sample application demonstrates Azure Managed Redis access by caching the restaurant details page for 60 seconds. You can add the Azure Managed Redis integration in the [secure-by-default web app + database creation wizard](https://portal.azure.com/?feature.customportal=false#create/Microsoft.AppServiceWebAppDatabaseV3), and it's also included in the [AZD template](https://github.com/Azure-Samples/python-app-service-postgresql-infra).
+Additionally, the sample application demonstrates Azure Managed Redis access by caching the restaurant details page for 60 seconds. You can add the Azure Managed Redis integration in the [AZD template](https://github.com/Azure-Samples/python-app-service-postgresql-infra).
 
 ## Requirements
 
