@@ -148,7 +148,7 @@ resource privateDnsZoneDB 'Microsoft.Network/privateDnsZones@2024-06-01' = {
   }  
 }
 
-// Resources needed to secure Redis Cache behind a private endpoint
+// Resources needed to secure Azure Managed Redis behind a private endpoint
 resource cachePrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-03-01' = {
   name: '${appName}-cache-privateEndpoint'
   location: location
@@ -161,7 +161,7 @@ resource cachePrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-03-01' = 
         name: '${appName}-cache-privateEndpoint'
         properties: {
           privateLinkServiceId: redisCache.id
-          groupIds: ['redisCache']
+          groupIds: ['redisEnterprise']
         }
       }
     ]
@@ -181,7 +181,7 @@ resource cachePrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-03-01' = 
   }
 }
 resource privateDnsZoneCache 'Microsoft.Network/privateDnsZones@2024-06-01' = {
-  name: 'privatelink.redis.cache.windows.net'
+  name: 'privatelink.redisenterprise.cache.azure.net'
   location: 'global'
   dependsOn: [
     virtualNetwork
@@ -274,20 +274,30 @@ resource dbserver 'Microsoft.DBforPostgreSQL/flexibleServers@2022-01-20-preview'
   ]
 }
 
-// The Redis cache is configured to the minimum pricing tier
-resource redisCache 'Microsoft.Cache/redis@2024-11-01' = {
+// The Azure Managed Redis cluster is configured to the minimum Balanced tier
+resource redisCache 'Microsoft.Cache/redisEnterprise@2024-10-01' = {
   name: '${appName}-cache'
   location: location
+  sku: {
+    name: 'Balanced_B0'
+    capacity: 1
+  }
   properties: {
-    sku: {
-      name: 'Basic'
-      family: 'C'
-      capacity: 0
-    }
-    redisConfiguration: {}
-    enableNonSslPort: false
-    redisVersion: '6'
+    minimumTlsVersion: '1.2'
     publicNetworkAccess: 'Disabled'
+  }
+}
+
+// The Azure Managed Redis database
+resource redisCacheDb 'Microsoft.Cache/redisEnterprise/databases@2024-10-01' = {
+  parent: redisCache
+  name: 'default'
+  properties: {
+    evictionPolicy: 'AllKeysLRU'
+    // EnterpriseCluster exposes a single endpoint so standard (non-cluster-aware)
+    // Redis clients like django-redis / redis-py work without modification.
+    clusteringPolicy: 'EnterpriseCluster'
+    port: 10000
   }
 }
 
@@ -430,7 +440,7 @@ resource cacheConnector 'Microsoft.ServiceLinker/linkers@2024-04-01' = {
     clientType: 'python'
     targetService: {
       type: 'AzureResource'
-      id:  resourceId('Microsoft.Cache/Redis/Databases', redisCache.name, '0')
+      id: redisCacheDb.id
     }
     authInfo: {
       authType: 'accessKey'

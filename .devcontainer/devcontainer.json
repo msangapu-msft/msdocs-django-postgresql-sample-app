@@ -1,5 +1,5 @@
 {
-	"name": "python-app-service-postgresql-redis-infra",
+	"name": "python-app-service-postgresql-managed-redis-infra",
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "app",
 	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
