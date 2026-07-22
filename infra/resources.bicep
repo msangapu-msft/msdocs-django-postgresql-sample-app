@@ -275,20 +275,25 @@ resource dbserver 'Microsoft.DBforPostgreSQL/flexibleServers@2022-01-20-preview'
 }
 
 // The Redis cache is configured to the minimum pricing tier
-resource redisCache 'Microsoft.Cache/redis@2024-11-01' = {
+resource redisCache 'Microsoft.Cache/redisEnterprise@2026-05-01-preview' = {
   name: '${appName}-cache'
   location: location
+  sku: {
+    name: 'Balanced_B0'
+  }
   properties: {
-    sku: {
-      name: 'Basic'
-      family: 'C'
-      capacity: 0
-    }
-    redisConfiguration: {}
-    enableNonSslPort: false
-    redisVersion: '6'
+    minimumTlsVersion: '1.2'
     publicNetworkAccess: 'Disabled'
   }
+
+  // Azure Managed Redis authentication
+  resource redisDatabase 'databases@2026-05-01-preview' = {
+      name: 'default'
+      properties: {
+      accessKeysAuthentication: 'Enabled'
+      }
+    }
+
 }
 
 // The App Service plan is configured to the B1 pricing tier
@@ -430,7 +435,7 @@ resource cacheConnector 'Microsoft.ServiceLinker/linkers@2024-04-01' = {
     clientType: 'python'
     targetService: {
       type: 'AzureResource'
-      id:  resourceId('Microsoft.Cache/Redis/Databases', redisCache.name, '0')
+      id: redisCache::redisDatabase.id
     }
     authInfo: {
       authType: 'accessKey'
