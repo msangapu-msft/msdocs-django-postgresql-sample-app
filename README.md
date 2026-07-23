@@ -32,7 +32,7 @@ The [requirements.txt](./requirements.txt) has the following packages, all used 
 | [pyscopg2-binary](https://pypi.org/project/psycopg-binary/) | PostgreSQL database adapter for Python. |
 | [python-dotenv](https://pypi.org/project/python-dotenv/) | Read key-value pairs from .env file and set them as environment variables. In this sample app, those variables describe how to connect to the database locally. <br><br> This package is used in the [manage.py](./manage.py) file to load environment variables. |
 | [whitenoise](https://pypi.org/project/whitenoise/) | Static file serving for WSGI applications, used in the deployed app. <br><br> This package is used in the [azureproject/production.py](./azureproject/production.py) file, which configures production settings. |
-| [django-redis](https://pypi.org/project/django-redis/) | Redis cache backend for Django. |
+| [django-redis](https://pypi.org/project/django-redis/) | Django integration for Azure Managed Redis and Redis-compatible caching backends. |
 
 ## Run the sample
 
