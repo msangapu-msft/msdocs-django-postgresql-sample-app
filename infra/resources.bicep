@@ -83,10 +83,10 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2024-01-01' = {
 }
 
 // Resources needed to secure Key Vault behind a private endpoint
-resource privateDnsZoneKeyVault 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+resource privateDnsZoneKeyVault 'Microsoft.Network/privateDnsZones@2024-06-01' = {
   name: 'privatelink.vaultcore.azure.net'
   location: 'global'
-  resource vnetLink 'virtualNetworkLinks@2020-06-01' = {
+  resource vnetLink 'virtualNetworkLinks@2024-06-01' = {
     location: 'global'
     name: '${appName}-vaultlink'
     properties: {
@@ -97,7 +97,7 @@ resource privateDnsZoneKeyVault 'Microsoft.Network/privateDnsZones@2020-06-01' =
     }
   }
 }
-resource vaultPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-04-01' = {
+resource vaultPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-01-01' = {
   name: '${appName}-vault-privateEndpoint'
   location: location
   properties: {
@@ -149,7 +149,7 @@ resource privateDnsZoneDB 'Microsoft.Network/privateDnsZones@2024-06-01' = {
 }
 
 // Resources needed to secure Azure Managed Redis behind a private endpoint
-resource cachePrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-03-01' = {
+resource cachePrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-01-01' = {
   name: '${appName}-cache-privateEndpoint'
   location: location
   properties: {
@@ -186,7 +186,7 @@ resource privateDnsZoneCache 'Microsoft.Network/privateDnsZones@2024-06-01' = {
   dependsOn: [
     virtualNetwork
   ]
-  resource privateDnsZoneLinkCache 'virtualNetworkLinks@2020-06-01' = {
+  resource privateDnsZoneLinkCache 'virtualNetworkLinks@2024-06-01' = {
     name: '${appName}-cachelink'
     location: 'global'
     properties: {
@@ -200,7 +200,7 @@ resource privateDnsZoneCache 'Microsoft.Network/privateDnsZones@2024-06-01' = {
 
 // The Key Vault is used to manage SQL database and redis secrets.
 // Current user has the admin permissions to configure key vault secrets, but by default doesn't have the permissions to read them.
-resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {
+resource keyVault 'Microsoft.KeyVault/vaults@2026-03-01-preview' = {
   name: '${take(replace(appName, '-', ''), 17)}-vault'
   location: location
   properties: {
@@ -218,11 +218,11 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {
 
 // Grant the current user with key vault secret user role permissions over the key vault. This lets you inspect the secrets, such as in the portal
 // If you remove this section, you can't read the key vault secrets, but the app still has access with its managed identity.
-resource keyVaultSecretUserRoleRoleDefinition 'Microsoft.Authorization/roleDefinitions@2018-01-01-preview' existing = {
+resource keyVaultSecretUserRoleRoleDefinition 'Microsoft.Authorization/roleDefinitions@2022-04-04-preview' existing = {
   scope: subscription()
   name: '4633458b-17de-408a-b874-0445c86b69e6' // The built-in Key Vault Secret User role
 }
-resource keyVaultSecretUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-08-01-preview' = {
+resource keyVaultSecretUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: keyVault
   name: guid(resourceGroup().id, principalId, keyVaultSecretUserRoleRoleDefinition.id)
   properties: {
@@ -232,7 +232,7 @@ resource keyVaultSecretUserRoleAssignment 'Microsoft.Authorization/roleAssignmen
   }
 }
 
-resource dbserver 'Microsoft.DBforPostgreSQL/flexibleServers@2022-01-20-preview' = {
+resource dbserver 'Microsoft.DBforPostgreSQL/flexibleServers@2026-04-01-preview' = {
   location: location
   tags: tags
   name: pgServerName
@@ -288,14 +288,20 @@ resource redisCache 'Microsoft.Cache/redisEnterprise@2026-05-01-preview' = {
   }
 }
 
-// The default Redis Enterprise database is platform-managed; reference it by ID.
-resource redisDatabase 'Microsoft.Cache/redisEnterprise/databases@2026-05-01-preview' existing = {
+resource redisDatabase 'Microsoft.Cache/redisEnterprise/databases@2026-05-01-preview' = {
   parent: redisCache
   name: 'default'
+  properties: {
+    accessKeysAuthentication: 'Enabled'
+    clientProtocol: 'Encrypted'
+    clusteringPolicy: 'OSSCluster'
+    evictionPolicy: 'VolatileLRU'
+    port: 10000
+  }
 }
 
 // The App Service plan is configured to the B1 pricing tier
-resource appServicePlan 'Microsoft.Web/serverfarms@2024-04-01' = {
+resource appServicePlan 'Microsoft.Web/serverfarms@2025-03-01' = {
   name: '${appName}-plan'
   location: location
   kind: 'linux'
@@ -307,7 +313,7 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2024-04-01' = {
   }
 }
 
-resource web 'Microsoft.Web/sites@2024-04-01' = {
+resource web 'Microsoft.Web/sites@2025-03-01' = {
   name: appName
   location: location
   tags: union(tags, { 'azd-service-name': 'web' }) // Needed by AZD
@@ -328,13 +334,13 @@ resource web 'Microsoft.Web/sites@2024-04-01' = {
   // For app setting configuration see the appsettings resource
   
   // Disable basic authentication for FTP and SCM
-  resource ftp 'basicPublishingCredentialsPolicies@2023-12-01' = {
+  resource ftp 'basicPublishingCredentialsPolicies@2025-03-01' = {
     name: 'ftp'
     properties: {
       allow: false
     }
   }
-  resource scm 'basicPublishingCredentialsPolicies@2023-12-01' = {
+  resource scm 'basicPublishingCredentialsPolicies@2025-03-01' = {
     name: 'scm'
     properties: {
       allow: false
@@ -380,7 +386,7 @@ resource web 'Microsoft.Web/sites@2024-04-01' = {
 // Service Connector from the app to the key vault, which generates the connection settings for the App Service app
 // The application code doesn't make any direct connections to the key vault, but the setup expedites the managed identity access
 // so that the cache connector can be configured with key vault references.
-resource vaultConnector 'Microsoft.ServiceLinker/linkers@2024-04-01' = {
+resource vaultConnector 'Microsoft.ServiceLinker/linkers@2024-07-01-preview' = {
   scope: web
   name: 'vaultConnector'
   properties: {
@@ -402,7 +408,7 @@ resource vaultConnector 'Microsoft.ServiceLinker/linkers@2024-04-01' = {
 }
 
 // Connector to the PostgreSQL database, which generates the connection string for the App Service app
-resource dbConnector 'Microsoft.ServiceLinker/linkers@2024-04-01' = {
+resource dbConnector 'Microsoft.ServiceLinker/linkers@2024-07-01-preview' = {
   scope: web
   name: 'defaultConnector'
   properties: {
@@ -426,7 +432,7 @@ resource dbConnector 'Microsoft.ServiceLinker/linkers@2024-04-01' = {
 }
 
 // Service Connector from the app to the cache, which generates an app setting for the App Service app
-resource cacheConnector 'Microsoft.ServiceLinker/linkers@2024-04-01' = {
+resource cacheConnector 'Microsoft.ServiceLinker/linkers@2024-07-01-preview' = {
   scope: web
   name: 'RedisConnector'
   properties: {
@@ -491,7 +497,7 @@ resource webdiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-previe
   }
 }
 
-resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
+resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2025-07-01' = {
   name: '${appName}-workspace'
   location: location
   tags: tags
@@ -531,7 +537,7 @@ var aggregatedAppSettings = union(
     // 'FOO': 'BAR'
   }
 )
-resource appsettings 'Microsoft.Web/sites/config@2024-04-01' = {
+resource appsettings 'Microsoft.Web/sites/config@2025-03-01' = {
   name: 'appsettings'
   parent: web
   properties: aggregatedAppSettings
@@ -543,7 +549,15 @@ resource appsettings 'Microsoft.Web/sites/config@2024-04-01' = {
 // is a workaround to ensure that the app settings are aggregated correctly and consistent across multiple deployments.
 
 output WEB_URI string = 'https://${web.properties.defaultHostName}'
-output CONNECTION_SETTINGS array = map(concat(dbConnector.listConfigurations().configurations, cacheConnector.listConfigurations().configurations, vaultConnector.listConfigurations().configurations), config => config.name)
+output CONNECTION_SETTINGS array = [
+  'AZURE_POSTGRESQL_NAME'
+  'AZURE_POSTGRESQL_HOST'
+  'AZURE_POSTGRESQL_USER'
+  'AZURE_POSTGRESQL_PASSWORD'
+  'AZURE_REDIS_CONNECTIONSTRING'
+  'AZURE_KEYVAULT_RESOURCEENDPOINT'
+  'AZURE_KEYVAULT_SCOPE'
+]
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = applicationInsightsResources.outputs.APPLICATIONINSIGHTS_CONNECTION_STRING
 output WEB_APP_LOG_STREAM string = format('https://portal.azure.com/#@/resource{0}/logStream', web.id)
 output WEB_APP_SSH string = format('https://{0}.scm.azurewebsites.net/webssh/host', web.name)
